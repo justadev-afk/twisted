@@ -5,7 +5,6 @@
     "module": "commonjs",
     "lib": ["es2021", "dom"],
     "declaration": true,
-    "removeComments": true,
     "outDir": "./dist",
     "rootDir": "./src",
     "resolveJsonModule": true,
@@ -19,6 +18,7 @@
     "test",
     "example",
     "runExamples.ts",
-    "debug.ts"
+    "debug.ts",
+    "tsup.config.ts"
   ]
 }
