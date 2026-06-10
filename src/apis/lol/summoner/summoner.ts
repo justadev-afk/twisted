@@ -1,4 +1,3 @@
-import * as _ from 'lodash'
 import { endpointsV4, IEndpoint } from '../../../endpoints/endpoints'
 import { SummonerV4DTO } from '../../../models-dto/summoners/summoner.dto'
 import { Regions } from '../../../constants'
@@ -17,7 +16,7 @@ export class SummonerApi extends BaseApiLol {
     return path
   }
   private genericRequest (by: FindSummonerBy, value: string, region: Regions) {
-    const endpoint = _.cloneDeep(endpointsV4.Summoner)
+    const endpoint = { ...endpointsV4.Summoner }
     endpoint.path = this.parsePath(endpoint, by)
     const params = {
       summonerName: value,

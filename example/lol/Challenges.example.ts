@@ -1,28 +1,65 @@
-import { RiotApi } from '../../src'
-import { LolApi } from '../../src/apis/lol/lol'
+import { LolApi, RiotApi } from '../../src'
 import { configChallenges } from '../config/config'
 
-export async function challengesV1Example() {
-   const rApi = new RiotApi()
-   const api = new LolApi()
+/**
+ * LOL-CHALLENGES-V1 — Explore the Challenges system.
+ *
+ * Challenges are achievement-style goals with levels (IRON … CHALLENGER) and
+ * leaderboards. This example walks the main read endpoints:
+ *   - PlayerChallenges    : a single player's progress (needs a PUUID)
+ *   - Leaderboards        : the top players for one challenge at a level
+ *   - Configs             : the static config for every challenge
+ *   - ChallengeConfig     : the static config for one challenge
+ *   - Percentiles         : value distribution across ALL challenges
+ *   - ChallengePercentiles: value distribution for one challenge
+ */
+export async function challengesV1Example () {
+  const riotApi = new RiotApi()
+  const lolApi = new LolApi()
 
-   const { response: { puuid } } = await rApi.Account.getByRiotId(configChallenges.summonerName, configChallenges.tagLine, configChallenges.regionGroup)
+  // 1. Resolve the Riot ID into a PUUID (PlayerChallenges is keyed by PUUID)
+  const { response: account } = await riotApi.Account.getByRiotId(
+    configChallenges.summonerName,
+    configChallenges.tagLine,
+    configChallenges.regionGroup
+  )
 
-   const playerChallenges = (await api.Challenges.PlayerChallenges(puuid, configChallenges.region)).response
-   // console.log('Found total challenge points:', playerChallenges.totalPoints)
+  // 2. The player's own challenge progress and summed points
+  const { response: playerChallenges } = await lolApi.Challenges.PlayerChallenges(
+    account.puuid,
+    configChallenges.region
+  )
+  console.log(`${account.gameName}#${account.tagLine} total points: ${playerChallenges.totalPoints.current}/${playerChallenges.totalPoints.max} (${playerChallenges.totalPoints.level})`)
 
-   const leaderboards = (await api.Challenges.Leaderboards(configChallenges.challengeId, configChallenges.level, configChallenges.region, { limit: 5 })).response
-   // console.log(`Top 5 ${configChallenges.level} for ARAM Eradication for `, leaderboards)
+  // 3. Top 5 players for our example challenge at the configured level
+  const { response: leaderboards } = await lolApi.Challenges.Leaderboards(
+    configChallenges.challengeId,
+    configChallenges.level,
+    configChallenges.region,
+    { limit: 5 }
+  )
+  console.log(`Leaderboard entries for challenge ${configChallenges.challengeId}: ${leaderboards.length}`)
 
-   const configs = (await api.Challenges.Configs(configChallenges.region)).response
-   // console.log("Config thresholds for the first of all basic challenges:", configs[0])
+  // 4. Static config for every challenge on this region
+  const { response: configs } = await lolApi.Challenges.Configs(configChallenges.region)
+  console.log(`Total challenges configured: ${configs.length}`)
 
-   const config = (await api.Challenges.ChallengeConfig(configChallenges.challengeId, configChallenges.region)).response
-   // console.log('Challenge Configuration for ARAM Eradication', config)
+  // 5. Static config for just our example challenge
+  const { response: challengeConfig } = await lolApi.Challenges.ChallengeConfig(
+    configChallenges.challengeId,
+    configChallenges.region
+  )
+  console.log(`Challenge ${challengeConfig.id} has leaderboard: ${challengeConfig.leaderboard}`)
 
-   const distributions = (await api.Challenges.Percentiles(configChallenges.region)).response
-   // console.log("Distribution for ARAM Eradication:", distributions[configChallenges.challengeId])
+  // 6. Value distribution across ALL challenges, then narrowed to our challenge
+  const { response: percentiles } = await lolApi.Challenges.Percentiles(configChallenges.region)
+  console.log(`Percentile data available for ${Object.keys(percentiles).length} challenges`)
 
-   const distribution = (await api.Challenges.ChallengePercentiles(configChallenges.challengeId, configChallenges.region)).response
-   // console.log("Distribution for ARAM Eradication:", distribution)
+  const { response: challengePercentiles } = await lolApi.Challenges.ChallengePercentiles(
+    configChallenges.challengeId,
+    configChallenges.region
+  )
+  console.log(`Levels with a percentile for challenge ${configChallenges.challengeId}: ${Object.keys(challengePercentiles).join(', ')}`)
+
+  return playerChallenges
 }

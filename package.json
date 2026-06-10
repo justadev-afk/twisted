@@ -1,6 +1,6 @@
 {
   "name": "twisted",
-  "version": "1.75.1",
+  "version": "1.80.0",
   "description": "Fetching riot games api data",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,7 +14,7 @@
     "prepublishOnly": "npm run build"
   },
   "engines": {
-    "node": ">=8.6.0"
+    "node": ">=18.0.0"
   },
   "keywords": [
     "riot",
@@ -41,9 +41,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/chai": "^4.3.11",
-    "@types/dotenv": "^6.1.1",
     "@types/jest": "^29.5.10",
-    "@types/lodash": "^4.14.202",
     "@types/node": "^20.10.0",
     "@types/promise-queue": "^2.2.3",
     "@types/sinon": "^17.0.2",
@@ -58,10 +56,7 @@
     "typescript": "^5.3.2"
   },
   "dependencies": {
-    "axios": "^1.6.2",
-    "dotenv": "^16.3.1",
     "http-status-codes": "^2.3.0",
-    "lodash": "^4.17.21",
     "promise-queue": "^2.2.5",
     "uuid": "^14.0.0"
   },

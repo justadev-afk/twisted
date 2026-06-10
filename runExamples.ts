@@ -1,5 +1,4 @@
 import * as allExamples from './example'
-import * as _ from 'lodash'
 
 const interval = 1000
 
@@ -17,7 +16,7 @@ async function runExamples () {
   console.log('------------------------------------------------')
   for (const key of examples) {
     console.log(`Run ${key}`)
-    const method = _.get(allExamples, key)
+    const method = (allExamples as Record<string, unknown>)[key]
     if (typeof method !== 'function') {
       console.error(`Method ${key} isn't a function`)
       continue

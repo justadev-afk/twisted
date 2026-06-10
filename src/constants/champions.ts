@@ -1,7 +1,3 @@
-import { invert } from 'lodash'
-import Axios from 'axios'
-import _ from 'lodash'
-
 /**
  * Champions - Used as fallback
  */
@@ -180,7 +176,26 @@ export enum Champions {
   YUNARA = 804
 }
 
-const championIdMap = invert(Champions)
+/**
+ * Bidirectional id <-> name map (replaces lodash `invert`):
+ * a numeric enum produces both `ANNIE -> 1` and `1 -> ANNIE` entries, so the
+ * resulting map can resolve a champion in either direction.
+ */
+const championIdMap: { [key: string]: string } = {}
+for (const [key, value] of Object.entries(Champions)) {
+  championIdMap[String(value)] = key
+}
+
+/**
+ * camelCase a snake_case / spaced string (replaces lodash `camelCase`).
+ */
+function camelCase (value: string): string {
+  return value
+    .split(/[^a-zA-Z0-9]+/)
+    .filter((part) => part.length > 0)
+    .map((part, index) => (index === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)))
+    .join('')
+}
 
 /**
  * Fetching champion IDs from CommunityDragon's PBE content. See https://www.communitydragon.org/
@@ -188,20 +203,20 @@ const championIdMap = invert(Champions)
 if (process.env.UPDATE_CHAMPION_IDS) {
   const updateChampionIDs = () => {
     const CD_CHAMPIONS = 'https://raw.communitydragon.org/pbe/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json'
-    try {
-      void Axios(CD_CHAMPIONS)
-          .then(({ data: cdChamps }) => {
-            cdChamps.forEach(({ id, alias }: {id: number, alias: string}) => {
-              const championAlias = alias.replace(/[a-z][A-Z]/g, letter => letter[0] + '_' + letter[1]).toUpperCase()
-              if (!championIdMap[id]) {
-                championIdMap[id] = championIdMap[id] || championAlias
-                championIdMap[championAlias] = championIdMap[championAlias] || '' + id
-              }
-            })
-          })
-    } catch (e) {
-      console.warn('Updating champion IDs failed')
-    }
+    void fetch(CD_CHAMPIONS)
+      .then((response) => response.json())
+      .then((cdChamps: { id: number, alias: string }[]) => {
+        cdChamps.forEach(({ id, alias }) => {
+          const championAlias = alias.replace(/[a-z][A-Z]/g, letter => letter[0] + '_' + letter[1]).toUpperCase()
+          if (!championIdMap[id]) {
+            championIdMap[id] = championIdMap[id] || championAlias
+            championIdMap[championAlias] = championIdMap[championAlias] || '' + id
+          }
+        })
+      })
+      .catch(() => {
+        console.warn('Updating champion IDs failed')
+      })
   }
   // Schedule once every day.
   setInterval(updateChampionIDs, 1000 * 60 * 60 * 24)
@@ -224,7 +239,7 @@ export function getChampionName (champ: number): string {
  */
 export function getChampionNameCapital (champ: number | string): string {
   let name = typeof champ === 'number' ? getChampionName(champ) : champ
-  name = _.camelCase(name.toLowerCase())
+  name = camelCase(name.toLowerCase())
   name = name.charAt(0).toUpperCase() + name.slice(1)
   switch (name) {
     case 'Reksai':

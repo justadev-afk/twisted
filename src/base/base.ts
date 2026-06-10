@@ -1,21 +1,16 @@
-import { AxiosRequestConfig, AxiosResponse } from 'axios'
-import * as _ from 'lodash'
 import { ApiKeyNotFound } from '../errors'
 import { IEndpoint } from '../endpoints'
 import { TOO_MANY_REQUESTS, SERVICE_UNAVAILABLE } from 'http-status-codes'
-import { config } from 'dotenv'
 import { ApiResponseDTO } from '../models-dto/api-response/api-response'
 import { RateLimitDto } from '../models-dto/rate-limit/rate-limit.dto'
 import { GenericError } from '../errors/Generic.error'
 import { RateLimitError } from '../errors/rate-limit.error'
-import { IBaseApiParams, IParams, waiter } from './base.utils'
+import { IBaseApiParams, IParams, RequestOptions, waiter } from './base.utils'
 import { ServiceUnavailable } from '../errors/service-unavailable.error'
 import { BaseConstants, BaseApiGames } from './base.const'
 import { Logger } from './logger.base'
-import { RequestBase } from './request.base'
+import { RequestBase, HttpResponse } from './request.base'
 import { RegionGroups } from '../constants'
-
-config()
 
 export class BaseApi<Region extends string> {
   protected readonly game: BaseApiGames = BaseApiGames.LOL
@@ -58,13 +53,13 @@ export class BaseApi<Region extends string> {
     }
     if (typeof param.debug !== 'undefined') {
       if (typeof param.debug.logTime !== 'undefined') {
-        _.set(this.debug, 'logTime', param.debug.logTime)
+        this.debug.logTime = param.debug.logTime
       }
       if (typeof param.debug.logUrls !== 'undefined') {
-        _.set(this.debug, 'logUrls', param.debug.logUrls)
+        this.debug.logUrls = param.debug.logUrls
       }
       if (typeof param.debug.logRatelimits !== 'undefined') {
-        _.set(this.debug, 'logRatelimits', param.debug.logRatelimits)
+        this.debug.logRatelimits = param.debug.logRatelimits
       }
     }
     if(typeof param.baseURL !== 'undefined') {
@@ -79,14 +74,15 @@ export class BaseApi<Region extends string> {
   }
 
   private getRateLimits (headers: any): RateLimitDto {
+    const h = headers || {}
     return {
-      Type: _.get(headers, 'x-rate-limit-type', null),
-      AppRateLimit: _.get(headers, 'x-app-rate-limit', null),
-      AppRateLimitCount: _.get(headers, 'x-app-rate-limit-count', null),
-      MethodRateLimit: _.get(headers, 'x-method-rate-limit'),
-      MethodRatelimitCount: _.get(headers, 'x-method-rate-limit-count', null),
-      RetryAfter: +_.get(headers, 'retry-after', 0),
-      EdgeTraceId: _.get(headers, 'x-riot-edge-trace-id')
+      Type: h['x-rate-limit-type'] ?? null,
+      AppRateLimit: h['x-app-rate-limit'] ?? null,
+      AppRateLimitCount: h['x-app-rate-limit-count'] ?? null,
+      MethodRateLimit: h['x-method-rate-limit'],
+      MethodRatelimitCount: h['x-method-rate-limit-count'] ?? null,
+      RetryAfter: +(h['retry-after'] ?? 0),
+      EdgeTraceId: h['x-riot-edge-trace-id']
     }
   }
 
@@ -129,7 +125,7 @@ export class BaseApi<Region extends string> {
   }
 
   private getError (e: any) {
-    const headers = this.getRateLimits(_.get(e, 'response.headers'))
+    const headers = this.getRateLimits(e?.response?.headers)
     if (this.isRateLimitError(e)) {
       return new RateLimitError(headers)
     }
@@ -140,7 +136,7 @@ export class BaseApi<Region extends string> {
     return new GenericError(headers, e)
   }
 
-  private internalRequest<T> (options: AxiosRequestConfig): Promise<T> {
+  private internalRequest<T> (options: RequestOptions): Promise<T> {
     return RequestBase.request<T>(options)
   }
 
@@ -208,7 +204,7 @@ export class BaseApi<Region extends string> {
     if (this.debug.logTime) {
       Logger.start(endpoint, url)
     }
-    const options: AxiosRequestConfig = {
+    const options: RequestOptions = {
       url,
       method: 'GET',
       headers: {
@@ -220,7 +216,7 @@ export class BaseApi<Region extends string> {
       Logger.uri(options, endpoint)
     }
     try {
-      const apiResponse = await this.internalRequest<AxiosResponse<T>>(options)
+      const apiResponse = await this.internalRequest<HttpResponse<T>>(options)
       const { data, headers } = apiResponse
       return {
         rateLimits: this.getRateLimits(headers),

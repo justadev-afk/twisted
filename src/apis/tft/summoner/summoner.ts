@@ -1,4 +1,3 @@
-import * as _ from 'lodash'
 import { endpointsTFTV1, IEndpoint } from '../../../endpoints/endpoints'
 import { SummonerV4DTO } from '../../../models-dto/summoners/summoner.dto'
 import { Regions } from '../../../constants'
@@ -17,7 +16,7 @@ export class SummonerTftApi extends BaseApiTft {
     return path
   }
   private genericRequest (by: FindSummonerBy, value: string, region: Regions) {
-    const endpoint = _.cloneDeep(endpointsTFTV1.Summoner)
+    const endpoint = { ...endpointsTFTV1.Summoner }
     endpoint.path = this.parsePath(endpoint, by)
     const params = {
       summonerName: value,

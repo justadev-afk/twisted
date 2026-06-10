@@ -1,4 +1,3 @@
-import Axios, { AxiosRequestConfig } from 'axios'
 import { DataDragonEnum } from '../../../constants/dataDragon'
 import { RealmServers } from '../../../constants/realmServers'
 import { RealmDTO, ChampionsDataDragon, QueuesDataDragonDTO, GameModesDataDragonDTO } from '../../../models-dto'
@@ -18,11 +17,11 @@ const defaultLang = 'en_US'
 export class DataDragonService {
   // Internal methods
   private async request<T> (path: string, base: DataDragonEnum = DataDragonEnum.BASE): Promise<T> {
-    const options: AxiosRequestConfig = {
-      url: `${base}/${path}`,
-      method: 'GET'
+    const response = await fetch(`${base}/${path}`)
+    if (!response.ok) {
+      throw new Error(`Data Dragon request failed (${response.status} ${response.statusText}): ${base}/${path}`)
     }
-    return (await Axios(options)).data
+    return await response.json() as T
   }
   // Riot requests
   // Data dragon

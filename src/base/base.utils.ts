@@ -1,8 +1,19 @@
-import { AxiosRequestConfig } from 'axios'
-import qs from 'querystring'
-
 export interface IParams {
   [key: string]: string | number
+}
+
+/**
+ * Minimal request options shared across the request pipeline.
+ * Replaces axios' `AxiosRequestConfig` now that the library uses native `fetch`.
+ */
+export interface RequestOptions {
+  url: string
+  method?: string
+  headers?: Record<string, string>
+  /**
+   * Query string values. Serialized with {@link stringifyParams}.
+   */
+  params?: Record<string, any>
 }
 
 export interface IBaseApiParams {
@@ -55,11 +66,41 @@ export function waiter (ms: number) {
   })
 }
 
-export function getUrlFromOptions (options: AxiosRequestConfig): string {
-  let uri = options.url as string
+/**
+ * Serialize query params into a query string.
+ *
+ * - `null`/`undefined` values are skipped (matching axios behaviour).
+ * - Arrays are expanded into repeated keys (`queue=420&queue=440`), which is
+ *   the format the Riot API expects.
+ */
+export function stringifyParams (params: Record<string, any>): string {
+  const search = new URLSearchParams()
+  for (const key of Object.keys(params)) {
+    const value = params[key]
+    if (value === undefined || value === null) {
+      continue
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item === undefined || item === null) {
+          continue
+        }
+        search.append(key, String(item))
+      }
+    } else {
+      search.append(key, String(value))
+    }
+  }
+  return search.toString()
+}
+
+export function getUrlFromOptions (options: RequestOptions): string {
+  let uri = options.url
   if (options.params) {
-    uri += '?'
-    uri += qs.stringify(options.params)
+    const query = stringifyParams(options.params)
+    if (query) {
+      uri += `?${query}`
+    }
   }
   return uri
 }

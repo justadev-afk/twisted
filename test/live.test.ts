@@ -1,9 +1,9 @@
 import { LolApi, RiotApi } from '../src/index';
 import { Regions, AccountAPIRegionGroups, regionToRegionGroupForAccountAPI } from '../src/constants/regions';
-import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
 import { CurrentGameInfoDTO } from '../src/models-dto';
+import { loadEnv } from './utils/loadEnv';
 
 describe('Live API Tests', () => {
   let RIOT_API_KEY: string;
@@ -24,7 +24,7 @@ describe('Live API Tests', () => {
       throw new Error(`Missing .env file at ${envPath}. Please create it with RIOT_API_KEY, RIOT_GAME_NAME, RIOT_TAG, RIOT_REGION.`);
     }
 
-    dotenv.config({ path: envPath });
+    loadEnv(envPath);
 
     RIOT_API_KEY = process.env.RIOT_API_KEY as string;
     RIOT_GAME_NAME = process.env.RIOT_GAME_NAME as string;

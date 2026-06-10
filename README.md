@@ -1,231 +1,401 @@
-# Twisted
-League of Legends API Wrapper <br>
-![https://www.npmjs.com/package/twisted](https://nodei.co/npm/twisted.png)
+<div align="center">
 
-# Simple example
-RIOT:
-```js
+# 🎮 Twisted
+
+### A fully‑typed Riot Games API wrapper for Node.js
+
+League of Legends · Teamfight Tactics · Riot Account · Data Dragon
+
+[![npm version](https://img.shields.io/npm/v/twisted?color=cb3837&logo=npm)](https://www.npmjs.com/package/twisted)
+[![npm downloads](https://img.shields.io/npm/dm/twisted?color=blue&logo=npm)](https://www.npmjs.com/package/twisted)
+[![node](https://img.shields.io/node/v/twisted?color=339933&logo=node.js&logoColor=white)](https://nodejs.org)
+[![types](https://img.shields.io/npm/types/twisted?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![license](https://img.shields.io/npm/l/twisted?color=green)](./LICENSE)
+
+</div>
+
+---
+
+## ✨ Highlights
+
+- 🧩 **Complete coverage** — League of Legends, Teamfight Tactics, Riot Account and Data Dragon in one package.
+- 🪶 **Lightweight** — built on the **native `fetch`** API. No `axios`, no `lodash`, no `dotenv`.
+- 🔤 **First‑class TypeScript** — every endpoint, parameter and response is typed. Great autocompletion out of the box.
+- 🔁 **Automatic rate‑limit retries** — `429`/`503` responses are retried honoring Riot's `Retry-After` header.
+- 🚦 **Concurrency control** — cap how many requests hit Riot in parallel.
+- 🧪 **Battle‑tested** — used in production by real projects.
+
+> [!IMPORTANT]
+> **v1.80** drops the `axios`, `lodash` and `dotenv` dependencies in favor of the platform.
+> The minimum supported Node.js version is now **18** (the first LTS shipping a global `fetch`).
+> See [Migrating to v1.80](#-migrating-to-v180).
+
+---
+
+## 📚 Table of contents
+
+- [Installation](#-installation)
+- [Quick start](#-quick-start)
+- [Core concepts](#-core-concepts)
+- [Configuration](#%EF%B8%8F-configuration)
+- [Rate limiting & retries](#-rate-limiting--retries)
+- [Error handling](#-error-handling)
+- [Data Dragon](#-data-dragon)
+- [Examples](#-examples)
+- [Endpoint coverage](#-endpoint-coverage)
+- [Migrating to v1.80](#-migrating-to-v180)
+- [Contributing](#-contributing)
+
+---
+
+## 📦 Installation
+
+```bash
+npm install twisted
+# or
+yarn add twisted
+# or
+pnpm add twisted
+```
+
+**Requirements:** Node.js **≥ 18**. Get your API key at the [Riot Developer Portal](https://developer.riotgames.com/).
+
+---
+
+## 🚀 Quick start
+
+The three entry points are `RiotApi` (account), `LolApi` (League of Legends) and `TftApi` (Teamfight Tactics).
+Every call returns `{ response, rateLimits }` — your data lives in `response`.
+
+<details open>
+<summary><b>Riot Account</b> — resolve a Riot ID into a PUUID</summary>
+
+```ts
 import { RiotApi, Constants } from 'twisted'
 
-const api = new RiotApi()
+const api = new RiotApi({ key: 'RGAPI-xxxxxxxx' })
 
-export async function getAccount () {
-  // Recommended to use the nearest routing value to your server: americas, asia, europe
-  return (await api.Account.getByRiotId("Hide on bush", "KR1", Constants.RegionGroups.AMERICAS)).response
+async function getAccount () {
+  // Use the routing value closest to your server: AMERICAS, ASIA or EUROPE
+  const { response } = await api.Account.getByRiotId(
+    'Hide on bush',           // gameName
+    'KR1',                    // tagLine (the part after the #)
+    Constants.RegionGroups.ASIA
+  )
+  return response // -> { puuid, gameName, tagLine }
 }
 ```
-LOL:
-```js
+
+</details>
+
+<details open>
+<summary><b>League of Legends</b> — summoner, ranked & matches</summary>
+
+```ts
 import { LolApi, Constants } from 'twisted'
 
-const api = new LolApi()
+const api = new LolApi({ key: 'RGAPI-xxxxxxxx' })
 
-export async function getSummoner () {
-  const user = await getAccount()
-  return await api.Summoner.getByPUUID(user.puuid, Constants.Regions.KOREA)
+async function getRanked (puuid: string) {
+  const summoner = (await api.Summoner.getByPUUID(puuid, Constants.Regions.KOREA)).response
+  const ranked   = (await api.League.byPUUID(puuid, Constants.Regions.KOREA)).response
+
+  const matchIds = (await api.MatchV5.list(puuid, Constants.RegionGroups.ASIA, { count: 5 })).response
+  const lastGame = (await api.MatchV5.get(matchIds[0], Constants.RegionGroups.ASIA)).response
+
+  return { summoner, ranked, lastGame }
 }
 ```
-TFT:
-```js
+
+</details>
+
+<details>
+<summary><b>Teamfight Tactics</b> — TFT summoner & matches</summary>
+
+```ts
 import { TftApi, Constants } from 'twisted'
 
-const api = new TftApi()
+const api = new TftApi({ key: 'RGAPI-xxxxxxxx' })
 
-export async function matchListTft () {
-  const user = await getAccount()
-  return api.Match.list(user.puuid, Constants.RegionGroups.KOREA)
+async function tftHistory (puuid: string) {
+  const summoner = (await api.Summoner.getByPUUID(puuid, Constants.Regions.AMERICA_NORTH)).response
+  const matchIds = (await api.Match.list(puuid, Constants.RegionGroups.AMERICAS, { count: 5 })).response
+  return { summoner, matchIds }
 }
-
 ```
-[More examples](https://github.com/justadev-afk/twisted/tree/master/example)
 
-# Automatic rate limits reattempts
-```js
+</details>
+
+---
+
+## 🧠 Core concepts
+
+### Response shape
+
+Every API method (except Data Dragon) resolves to an `ApiResponseDTO<T>`:
+
+```ts
+{
+  response: T          // the parsed payload
+  rateLimits: {        // parsed from Riot's response headers
+    AppRateLimit, AppRateLimitCount,
+    MethodRateLimit, MethodRatelimitCount,
+    RetryAfter, Type, EdgeTraceId
+  }
+}
+```
+
+### Regions vs. region groups
+
+Riot exposes three different routing concepts. Twisted enforces the right one at the **type level**, so the compiler tells you when you pass the wrong kind.
+
+| Concept | Type | Values | Used by |
+| --- | --- | --- | --- |
+| **Platform region** | `Regions` | `NA1`, `EUW1`, `KR`, `BR1`, … | Summoner, League, Champion Mastery, Spectator, Status |
+| **Region group** | `RegionGroups` | `AMERICAS`, `ASIA`, `EUROPE`, `SEA` | Match‑V5, TFT Match |
+| **Account routing** | `AccountAPIRegionGroups` | `AMERICAS`, `ASIA`, `EUROPE` | Account‑V1 |
+
+```ts
+import { Constants } from 'twisted'
+
+Constants.Regions.EU_WEST        // 'EUW1'  — platform region
+Constants.RegionGroups.EUROPE    // 'EUROPE' — routing value
+```
+
+### Providing your API key
+
+The key is read from `process.env.RIOT_API_KEY`, or you can pass it explicitly:
+
+```ts
+new LolApi('RGAPI-xxxxxxxx')          // shorthand
+new LolApi({ key: 'RGAPI-xxxxxxxx' }) // with options
+```
+
+> Since `dotenv` is no longer bundled, load a `.env` file with Node's built‑in flag
+> (Node ≥ 20.6): `node --env-file=.env app.js`, or set the variable in your shell.
+
+---
+
+## ⚙️ Configuration
+
+```ts
 import { LolApi } from 'twisted'
 
 const api = new LolApi({
-   /**
-   * If api response is 429 (rate limits) try reattempt after needed time (default true)
-   */
-  rateLimitRetry: true
-  /**
-   * Number of time to retry after rate limit response (default 1)
-   */
-  rateLimitRetryAttempts: 1
-  /**
-   * Concurrency calls to riot (default infinity)
-   * Concurrency per method (example: summoner api, match api, etc)
-   */
+  key: 'RGAPI-xxxxxxxx',
+  rateLimitRetry: true,
+  rateLimitRetryAttempts: 1,
   concurrency: undefined,
-  /**
-   * Riot games api key
-   */
-  key: '',
-  /**
-   * BaseURL for a rate limiting proxy (default: "https://$(region).api.riotgames.com/:game")
-   * Using this field is for a very advanced use case and in most cases not necessary
-   * ${region} and :game are expected but not required variables
-   */
-  baseURL: "http://localhost:8080/${region}/:game",
-  /**
-   * Debug methods
-   */
   debug: {
-    /**
-     * Log methods execution time (default false)
-     */
-    logTime: false
-    /**
-     * Log urls (default false)
-     */
-    logUrls: false
-    /**
-     * Log when is waiting for rate limits (default false)
-     */
-    logRatelimit?: false
+    logTime: false,
+    logUrls: false,
+    logRatelimits: false
   }
 })
 ```
 
-# Endpoints 
-Everything should be in the same order as in the official docs.
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | `string` | `process.env.RIOT_API_KEY` | Your Riot Games API key. |
+| `rateLimitRetry` | `boolean` | `true` | Retry the request when Riot answers `429` / `503`. |
+| `rateLimitRetryAttempts` | `number` | `1` | How many times to retry after a rate‑limit response. |
+| `concurrency` | `number` | `Infinity` | Max concurrent requests **per service** (Summoner, Match, …). |
+| `baseURL` | `string` | `https://$(region).api.riotgames.com/:game` | Point requests at a rate‑limiting proxy. `$(region)` and `:game` are substituted. |
+| `debug.logTime` | `boolean` | `false` | Log each method's execution time. |
+| `debug.logUrls` | `boolean` | `false` | Log the URL of every request. |
+| `debug.logRatelimits` | `boolean` | `false` | Log whenever the client is waiting on a rate limit. |
 
-# Riot Endpoints
-## ACCOUNT-V1
-- [x] `Get account by puuid`
-- [ ] `Get account by puuid - ESPORTS`
-- [x] `Get account by riot id`
-- [ ] `Get account by riot id - ESPORTS`
-- [ ] `Get active shard for a player`
-- [x] `Get active region (lol and tft)`
-- [ ] `Get account by access token`
-- [ ] `Get account by access token - ESPORTS`
+---
 
-# LOL Endpoints
-## CHAMPION-MASTERY-V4
-- [x] `Get all champion mastery entries sorted by number of champion points descending.`
-- [x] `Get a champion mastery by player ID and champion ID.`
-- [x] `Get a player's total champion mastery score, which is the sum of individual champion mastery levels.`
-## CHAMPION-V3
-- [x] `Retrieve all champions.`
-- [x] `Retrieve champion by ID.`
-## CLASH
-- [x] `Get players by summoner id`
-- [x] `Get team`
-- [x] `Get tournaments`
-- [x] `Get tournaments by team id`
-- [x] `Get tournament by id`
-## MATCH-V5
-- [x] `Get match by id`
-- [x] `Get matches by summoner id`
-- [x] `Get match timeline by id`
-- [x] `Get available match replays by PUUID.`
-## MATCH-V4 (deprecated)
-- [x] `Get matches id by tournament code`
-- [x] `Get match by id`
-- [x] `Get match by tournament code`
-- [x] `Get matches by summoner id`
-- [x] `Get match timeline by id`
-## LEAGUE-V4
-- [x] `Get the challenger league for given queue.`
-- [x] `Get league entries in all queues by PUUID.`
-- [x] `Get league entries in all queues for a given summoner ID.`
-- [x] `Get all the league entries.`
-- [x] `Get the grandmaster league of a specific queue.`
-- [x] `Get league with given ID, including inactive entries.`
-- [x] `Get the master league for given queue.`
-- [x] `Get the queues that have positional ranks enabled.` (deprecated June 17th and in `v0.9.10`)
-- [x] `Get league positions in all queues for a given summoner ID.` (deprecated June 17th and in `v0.9.10`)
-- [x] `Get all the positional league entries.` (deprecated June 17th and in `v0.9.10`)
-## LOL-CHALLENGES-V1
-- [x] `Get all challenge configurations.`
-- [x] `Get all challenge percentile distributions.`
-- [x] `Get a challenge configuration.`
-- [x] `Get Leaderboards for a challenge (Chall, GM, Masters).`
-- [x] `Get a challenge percentile distribution.`
-- [x] `Get player challenge information.`
-## LOL-STATUS-V3
-- [x] `Get League of Legends status for the given shard.`
-- [x] `Get matchlist for games played on given account ID and platform ID and filtered using given filter parameters, if any.`
-- [x] `Get match timeline by match ID.`
-- [x] `Get match IDs by tournament code.`
-- [x] `Get match by match ID and tournament code.`
-## LOL-STATUS-V4
-- [x] `Get League of Legends status for the given platform.`
-## SPECTATOR-V5
-- [x] `Get current game information for the given summoner ID.`
-- [x] `Get list of featured games.`
-## SPECTATOR-V4 (deprecated [April 5](https://twitter.com/RiotGamesDevRel/status/1764780016640852222?t=pHB1GpVotgKnNYU-OH_1HQ&s=19))
-- [x] `Get current game information for the given summoner ID.`
-- [x] `Get list of featured games.`
-## SUMMONER-V4
-- [x] `Get a summoner by account ID.`
-- [x] `Get a summoner by summoner name.` (deprecated Oct 16th, 2023)
-- [x] `Get a summoner by PUUID.` 
-- [x] `Get a summoner by summoner ID.`
-## TOURNAMENT-STUB-V4
-- [ ] `Create a mock tournament code for the given tournament.`
-- [ ] `Gets a mock list of lobby events by tournament code.`
-- [ ] `Creates a mock tournament provider and returns its ID.`
-- [ ] `Creates a mock tournament and returns its ID.`
-## TOURNAMENT-V4
-- [ ] `Create a tournament code for the given tournament.`
-- [ ] `Returns the tournament code DTO associated with a tournament code string.`
-- [ ] `Update the pick type, map, spectator type, or allowed summoners for a code.`
-- [ ] `Gets a list of lobby events by tournament code.`
-- [ ] `Creates a tournament provider and returns its ID.`
-- [ ] `Creates a tournament and returns its ID.`
+## 🔁 Rate limiting & retries
 
-# TFT Endpoints
-## TFT-SPECTATOR-V5
-- [x] `Get current game information for the given puuid.`
-- [x] `Get list of featured games.`
-## TFT-SUMMONER-V1
-- [x] `Get a summoner by account ID.`
-- [x] `Get a summoner by summoner name.` (deprecated Oct 16th, 2023)
-- [x] `Get a summoner by PUUID.`
-- [x] `Get a summoner by summoner ID.`
-## TFT-MATCH-V1
-- [x] `Get match list by summoner PUUID.`
-- [x] `Get match list details.`
-## TFT-LEAGUE-V1
-- [x] `Get the challenger league for given queue.`
-- [x] `Get the grandmaster league for given queue.`
-- [x] `Get the master league for given queue.`
-- [x] `Get league entries in all queues for a given summoner ID.`
-- [ ] `Get all the league entries.`
-- [ ] `Get league with given ID, including inactive entries.`
+When Riot returns **`429 Too Many Requests`** or **`503 Service Unavailable`**, Twisted automatically waits
+(honoring the `Retry-After` header) and re‑issues the request up to `rateLimitRetryAttempts` times — query
+parameters included. Disable it with `rateLimitRetry: false` if you manage limits yourself.
 
-# Run all examples
+### Concurrency
 
-Download code from git and:
+```ts
+// Never fire more than 10 concurrent requests per service
+const api = new LolApi({ key, concurrency: 10 })
+```
 
-## Simple
-```$ RIOT_API_KEY={YOUR_KEY} yarn example```
+---
 
-## Specific examples
-```$ RIOT_API_KEY={YOUR_KEY} yarn example {exampleFunctionName}```
+## 🧯 Error handling
 
-## With docker
-Edit docker-compose.yml with your api key and:
-```$ docker-compose up```
+Failed requests throw typed errors you can branch on:
 
-## Real project
-We did a project based on a "twisted" package, this project is not finished but it is a very good example<br />
-Github: https://github.com/twisted-gg
+```ts
+import { LolApi, Constants, GenericError, RateLimitError, ServiceUnavailable, ApiKeyNotFound } from 'twisted'
 
-# Options
+try {
+  await api.Summoner.getByPUUID(puuid, Constants.Regions.KOREA)
+} catch (e) {
+  if (e instanceof RateLimitError)   { /* 429 — retries exhausted */ }
+  if (e instanceof ServiceUnavailable) { /* 503 */ }
+  if (e instanceof ApiKeyNotFound)   { /* missing key */ }
+  if (e instanceof GenericError)     { console.log(e.status, e.body) }
+}
+```
 
-The following environment variables can be set either in the ```.env``` file or as shown in the examples:
- 
-## ```RIOT_API_KEY```
+| Error | When |
+| --- | --- |
+| `ApiKeyNotFound` | No API key was provided. |
+| `RateLimitError` | `429` and retries are exhausted/disabled. |
+| `ServiceUnavailable` | `503` from the Riot API. |
+| `GenericError` | Any other non‑2xx response (`status` and `body` attached). |
 
-Obtained from the Riot Games developer page(https://developer.riotgames.com/)
-Necessary to use this library.
+---
 
-## ```UPDATE_CHAMPION_IDS```
+## 🐉 Data Dragon
 
-This library has an option to fetch an actual version of champion IDs regularly. This is useful in case a new champion
-gets added, while the application runs. E.g. data crawlers, or services which aren't supposed to be restarted regularly.
+Static game assets (champions, items, runes, versions…). Data Dragon hits the public CDN directly — **no API key,
+no rate limiting** — so these methods return the raw payload instead of an `ApiResponseDTO`.
 
-Set the value to ```true``` or ```1``` to enable this feature. 
+```ts
+const api = new LolApi()
+
+const versions = await api.DataDragon.getVersions()                 // ['15.x.1', …]
+const champs   = await api.DataDragon.getChampionList()             // all champions
+const aatrox   = await api.DataDragon.getChampion(Constants.Champions.AATROX)
+const runes    = await api.DataDragon.getRunesReforged()
+```
+
+---
+
+## 💡 Examples
+
+A runnable example exists for **every endpoint** under [`/example`](./example).
+
+```bash
+# Run them all
+RIOT_API_KEY=RGAPI-xxxx yarn example
+
+# Run a subset by (case-insensitive) name match
+RIOT_API_KEY=RGAPI-xxxx yarn example summoner
+```
+
+---
+
+## 📋 Endpoint coverage
+
+> Listed in the same order as the [official Riot documentation](https://developer.riotgames.com/apis).
+
+<details>
+<summary><b>Riot Account</b></summary>
+
+#### ACCOUNT-V1
+- [x] Get account by puuid
+- [x] Get account by riot id
+- [x] Get active region (lol and tft)
+- [ ] Get account by puuid — ESPORTS
+- [ ] Get account by riot id — ESPORTS
+- [ ] Get active shard for a player
+- [ ] Get account by access token
+
+</details>
+
+<details>
+<summary><b>League of Legends</b></summary>
+
+#### CHAMPION-MASTERY-V4
+- [x] All champion mastery entries
+- [x] Champion mastery by player & champion id
+- [x] Total champion mastery score
+
+#### CHAMPION-V3
+- [x] Champion rotation
+
+#### CLASH
+- [x] Players by summoner id · Team · Tournaments · Tournament by team id · Tournament by id
+
+#### MATCH-V5
+- [x] Match by id · Matches by puuid · Match timeline · Available replays by puuid
+
+#### MATCH-V4 *(deprecated)*
+- [x] Matches by tournament code · Match by id · Match by tournament code · Matches by summoner id · Match timeline
+
+#### LEAGUE-V4
+- [x] Challenger / Grandmaster / Master leagues by queue
+- [x] League entries by PUUID · by summoner id · all entries
+- [x] League by id · Experimental league entries
+
+#### LOL-CHALLENGES-V1
+- [x] Config · Percentiles · Challenge config · Leaderboards · Challenge percentiles · Player challenges
+
+#### LOL-STATUS-V4
+- [x] Platform status (v4) · Shard status (v3, deprecated)
+
+#### SPECTATOR-V5
+- [x] Current game by summoner id · Featured games *(v4 deprecated)*
+
+#### SUMMONER-V4
+- [x] By account id · By PUUID · By summoner id
+
+#### TOURNAMENT(-STUB)-V4
+- [ ] Not yet implemented
+
+</details>
+
+<details>
+<summary><b>Teamfight Tactics</b></summary>
+
+#### TFT-SUMMONER-V1
+- [x] By account id · By PUUID · By summoner id
+
+#### TFT-MATCH-V1
+- [x] Match list by PUUID · Match details
+
+#### TFT-LEAGUE-V1
+- [x] Challenger / Grandmaster / Master leagues
+- [x] Entries by summoner id · By tier & division
+- [ ] All entries · League by id
+
+#### TFT-SPECTATOR-V5
+- [x] Current game by puuid · Featured games
+
+</details>
+
+---
+
+## 🔀 Migrating to v1.80
+
+This release removes three runtime dependencies in favor of native platform features:
+
+| Removed | Replaced by |
+| --- | --- |
+| `axios` | Native `fetch` (Node ≥ 18) |
+| `lodash` | Native JS (`Object.entries`, spreads, …) |
+| `dotenv` | `node --env-file=.env` or your own loader |
+
+**What you need to do**
+
+- Run on **Node 18 or newer**.
+- If you relied on Twisted auto‑loading a `.env`, load it yourself — e.g. `node --env-file=.env`, or pass `new LolApi({ key })`.
+
+The public API is otherwise **unchanged** — your existing calls keep working.
+
+---
+
+## 🤝 Contributing
+
+```bash
+yarn install      # install dependencies
+yarn build        # compile TypeScript -> dist/
+yarn lint         # eslint
+yarn jest         # run the test suite (coverage is always collected)
+```
+
+PRs are welcome! For new endpoints: declare it in `src/endpoints`, add the service method, model the response DTO,
+add an example, and wire it into the relevant entry class.
+
+A larger real‑world project built on Twisted lives at [twisted‑gg](https://github.com/twisted-gg).
+
+---
+
+<div align="center">
+
+Released under the [MIT License](./LICENSE).
+
+</div>
