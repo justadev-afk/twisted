@@ -1,4 +1,4 @@
-import httpStatus from 'http-status-codes'
+import * as httpStatus from '../../../src/constants/http-status'
 import { SpectatorApi } from '../../../src/apis/lol/spectator/spectator'
 import { Regions } from '../../../src/constants'
 

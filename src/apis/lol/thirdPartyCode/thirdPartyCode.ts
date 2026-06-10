@@ -1,4 +1,4 @@
-import { INTERNAL_SERVER_ERROR, NOT_FOUND } from 'http-status-codes'
+import { INTERNAL_SERVER_ERROR, NOT_FOUND } from '../../../constants/http-status'
 import { Regions } from '../../../constants'
 import { endpointsV4 } from '../../../endpoints/endpoints'
 import { ThirdPartyCodeDTO } from '../../../models-dto/third-party-code/third-party-code.dto'

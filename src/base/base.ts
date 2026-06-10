@@ -1,6 +1,6 @@
 import { ApiKeyNotFound } from '../errors'
 import { IEndpoint } from '../endpoints'
-import { TOO_MANY_REQUESTS, SERVICE_UNAVAILABLE } from 'http-status-codes'
+import { TOO_MANY_REQUESTS, SERVICE_UNAVAILABLE } from '../constants/http-status'
 import { ApiResponseDTO } from '../models-dto/api-response/api-response'
 import { RateLimitDto } from '../models-dto/rate-limit/rate-limit.dto'
 import { GenericError } from '../errors/Generic.error'

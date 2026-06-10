@@ -1,4 +1,4 @@
-import * as httpStatusCode from 'http-status-codes'
+import * as httpStatusCode from '../../../src/constants/http-status'
 import { ThirdPartyCode } from '../../../src/apis/lol/thirdPartyCode/thirdPartyCode'
 import { Regions } from '../../../src/constants'
 

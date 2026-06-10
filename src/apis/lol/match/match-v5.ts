@@ -1,4 +1,4 @@
-import { NOT_FOUND } from 'http-status-codes'
+import { NOT_FOUND } from '../../../constants/http-status'
 import { RegionGroups } from '../../../constants'
 import { endpointsV5 } from '../../../endpoints/endpoints'
 import { GenericError } from '../../../errors'

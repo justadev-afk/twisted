@@ -1,4 +1,4 @@
-import { StatusCodes } from 'http-status-codes'
+import { StatusCodes } from '../../../constants/http-status'
 import { Regions } from '../../../constants'
 import { FeaturedGamesDTO } from '../../../models-dto/spectator/featured-games.dto'
 import { endpointsV5 } from '../../../endpoints/endpoints'

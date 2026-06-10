@@ -1,5 +1,5 @@
 import { IErrors } from '.'
-import { TOO_MANY_REQUESTS } from 'http-status-codes'
+import { TOO_MANY_REQUESTS } from '../constants/http-status'
 import { RateLimitDto } from '../models-dto/rate-limit/rate-limit.dto'
 
 const message = 'Rate limit error'

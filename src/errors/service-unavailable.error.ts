@@ -1,5 +1,5 @@
 import { IErrors } from '.'
-import { SERVICE_UNAVAILABLE } from 'http-status-codes'
+import { SERVICE_UNAVAILABLE } from '../constants/http-status'
 import { RateLimitDto } from '../models-dto/rate-limit/rate-limit.dto'
 
 const message = 'Riot games api unavailable check: https://developer.riotgames.com/api-status/'

@@ -1,6 +1,6 @@
 import { IErrors } from '.'
 import { RateLimitDto } from '../models-dto/rate-limit/rate-limit.dto'
-import HttpStatusCodes from 'http-status-codes'
+import { INTERNAL_SERVER_ERROR } from '../constants/http-status'
 
 const message = 'Generic error'
 
@@ -23,7 +23,7 @@ export class GenericError extends Error implements IErrors {
 
   constructor (rateLimits: RateLimitDto, error: HttpErrorLike) {
     super(error.message || message)
-    this.status = error.response?.status || HttpStatusCodes.INTERNAL_SERVER_ERROR
+    this.status = error.response?.status || INTERNAL_SERVER_ERROR
     this.body = error.response?.data
     this.rateLimits = rateLimits
     this.error = error
