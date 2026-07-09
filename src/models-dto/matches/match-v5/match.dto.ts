@@ -78,8 +78,10 @@ export namespace MatchV5DTOs {
     commandPings: number;
     retreatPings:                   number;
     visionClearedPings:             number;
+    causedGameEndFromIGNBSurrender: boolean;
     consumablesPurchased: number;
     damageDealtToBuildings: number;
+    damageDealtToEpicMonsters: number;
     damageDealtToObjectives: number;
     damageDealtToTurrets: number;
     damageSelfMitigated: number;
@@ -96,6 +98,7 @@ export namespace MatchV5DTOs {
     firstTowerAssist: boolean;
     firstTowerKill: boolean;
     gameEndedInEarlySurrender: boolean;
+    gameEndedInIGNBSurrender: boolean;
     gameEndedInSurrender: boolean;
     getBackPings: number;
     goldEarned: number;
@@ -144,6 +147,7 @@ export namespace MatchV5DTOs {
     physicalDamageDealt: number;
     physicalDamageDealtToChampions: number;
     physicalDamageTaken: number;
+    positionAssignedByMatchmaking: string;
     profileIcon: number;
     pushPings: number;
     puuid: string;
@@ -152,6 +156,7 @@ export namespace MatchV5DTOs {
     riotIdGameName?: string;
     riotIdTagline: string;
     role: Role;
+    selectedRolePreferences: string;
     sightWardsBoughtInGame: number;
     spell1Casts: number;
     spell2Casts: number;
@@ -168,6 +173,7 @@ export namespace MatchV5DTOs {
     summonerName: string;
     teamEarlySurrendered: boolean;
     teamId: number;
+    teamIGNBSurrendered: boolean;
 
     /** Both individualPosition and teamPosition are computed by the game server and are different versions of the most likely position played by a player. The individualPosition is the best guess for which position the player actually played in isolation of anything else. The teamPosition is the best guess for which position the player actually played if we add the constraint that each team must have one top player, one jungle, one middle, etc. Generally the recommendation is to use the teamPosition field over the individualPosition field. */
     teamPosition: Position;
@@ -198,6 +204,9 @@ export namespace MatchV5DTOs {
     visionWardsBoughtInGame: number;
     wardsKilled: number;
     wardsPlaced: number;
+    wasSevereTransgressor: boolean;
+    wasPremadeWithIGNBGameEndCauser: boolean;
+    wasPremadeWithSevereTransgressor: boolean;
     win: boolean;
 
     /** Arena only values (is otherwise set to 0)*/
