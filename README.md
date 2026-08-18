@@ -259,6 +259,7 @@ const api = new LolApi()
 const versions = await api.DataDragon.getVersions()                 // ['15.x.1', …]
 const champs   = await api.DataDragon.getChampionList()             // all champions
 const aatrox   = await api.DataDragon.getChampion(Constants.Champions.AATROX)
+const items    = await api.DataDragon.getItemList()                 // all items
 const runes    = await api.DataDragon.getRunesReforged()
 ```
 

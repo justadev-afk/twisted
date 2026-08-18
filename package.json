@@ -1,6 +1,6 @@
 {
   "name": "twisted",
-  "version": "1.82.0",
+  "version": "1.83.0",
   "description": "Fetching riot games api data",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

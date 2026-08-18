@@ -6,6 +6,7 @@ import { ChampionsDataDragonDetailsSolo } from '../../../models-dto/data-dragon/
 import { MapsDataDragonDTO } from '../../../models-dto/data-dragon/maps.datadragon.dto'
 import { GameTypesDataDragonDTO } from '../../../models-dto/data-dragon/game-types.datadragon.dto'
 import { RunesReforgedDTO } from '../../../models-dto/data-dragon/runes-reforged.dto'
+import { ItemsDataDragon } from '../../../models-dto/data-dragon/items.datadragon.dto'
 
 const defaultLang = 'en_US'
 
@@ -76,6 +77,13 @@ export class DataDragonService {
       return response
     }
     return fullResponse
+  }
+
+  async getItemList(language?: string): Promise<ItemsDataDragon> {
+    const version = (await this.getVersions())[0]
+    const lang = language || defaultLang
+    const path = `cdn/${version}/data/${lang}/item.json`
+    return this.request(path)
   }
 
   // Static data
